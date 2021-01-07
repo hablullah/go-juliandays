@@ -2,22 +2,18 @@ package juliandays
 
 import (
 	"errors"
+	"math"
 	"time"
-
-	dec "github.com/shopspring/decimal"
 )
 
 func FromTime(dt time.Time) (float64, error) {
 	// Convert to UTC
 	dt = dt.UTC()
 
-	// Prepare variables for calculating
-	Y := int64(dt.Year())
-	M := int64(dt.Month())
-	D := int64(dt.Day())
-	H := int64(dt.Hour())
-	m := int64(dt.Minute())
-	s := int64(dt.Second())
+	// If year is before 4713 B.C, stop
+	if dt.Year() < -4712 {
+		return 0, errors.New("year is before Julian calendar")
+	}
 
 	// If date is in blank days, stop
 	endOfJulian := time.Date(1582, 10, 4, 23, 59, 59, 0, time.UTC)
@@ -26,6 +22,14 @@ func FromTime(dt time.Time) (float64, error) {
 		return 0, errors.New("date is within blank days")
 	}
 
+	// Prepare variables for calculating
+	Y := float64(dt.Year())
+	M := float64(dt.Month())
+	D := float64(dt.Day())
+	H := float64(dt.Hour())
+	m := float64(dt.Minute())
+	s := float64(dt.Second())
+
 	// If month <= 2, change year and month
 	if M <= 2 {
 		M += 12
@@ -33,100 +37,69 @@ func FromTime(dt time.Time) (float64, error) {
 	}
 
 	// Check whether date is gregorian or julian
-	constant := dec.Zero
+	var constant float64
 	if dt.After(endOfJulian) {
-		temp := dec.New(Y, -2).Floor()
-		constant = dec.New(2, 0).
-			Add(temp.Div(dec.New(4, 0)).Floor()).
-			Sub(temp)
+		temp := math.Floor(float64(Y) / 100)
+		constant = 2 + math.Floor(temp/4) - temp
 	}
 
 	// Calculate julian day
-	yearToDays := dec.New(Y, 0).
-		Mul(dec.NewFromFloat(365.25)).
-		Floor()
-
-	monthToDays := dec.New(M+1, 0).
-		Mul(dec.NewFromFloat(30.6001)).
-		Floor()
-
-	timeToSeconds := H*3600 + m*60 + s
-	timeToDays := dec.New(timeToSeconds, 0).
-		Div(dec.New(86400, 0))
-
-	julianDay, _ := dec.NewFromFloat(1720994.5).
-		Add(yearToDays).
-		Add(monthToDays).
-		Add(constant).
-		Add(dec.New(D, 0)).
-		Add(timeToDays).
-		Float64()
+	yearToDays := math.Floor(Y * 365.25)
+	monthToDays := math.Floor((M + 1) * 30.6001)
+	timeToDays := (H*3600 + m*60 + s) / 86400
+	julianDay := 1720994.5 + yearToDays + monthToDays + constant + D + timeToDays
 
 	return julianDay, nil
 }
 
 func ToTime(jd float64) time.Time {
 	// Prepare variables for calculating
-	jd1 := dec.NewFromFloat(jd).Add(dec.NewFromFloat(0.5))
-	z := jd1.Floor()
-	f := jd1.Sub(z)
+	jd1 := jd + 0.5
+	z := math.Floor(jd1)
+	f := jd1 - z
 
 	a := z
-	if z.GreaterThanOrEqual(dec.New(2299161, 0)) {
-		aa := z.Sub(dec.NewFromFloat(1867216.25)).
-			Div(dec.NewFromFloat(36524.25)).
-			Floor()
-		aaBy4 := aa.Div(dec.New(4, 0)).Floor()
-		a = z.Add(dec.New(1, 0)).Add(aa).Sub(aaBy4)
+	if z >= 2299161 {
+		aa := math.Floor((z - 1867216.25) / 36524.25)
+		a = z + 1 + aa - math.Floor(aa/4)
 	}
 
-	b := a.Add(dec.New(1524, 0))
-	c := b.Sub(dec.NewFromFloat(122.1)).
-		Div(dec.NewFromFloat(365.25)).
-		Floor()
-	d := c.Mul(dec.NewFromFloat(365.25)).Floor()
-	e := b.Sub(d).Div(dec.NewFromFloat(30.6001)).Floor()
+	b := a + 1524
+	c := math.Floor((b - 122.1) / 365.25)
+	d := math.Floor(c * 365.25)
+	e := math.Floor((b - d) / 30.6001)
 
 	// Calculate day with its time
-	dayTime := b.Sub(d).
-		Sub(e.Mul(dec.NewFromFloat(30.6001)).Floor()).
-		Add(f)
-	day := dayTime.Floor()
+	dayTime := b - d - math.Floor(e*30.6001) + f
+	day := math.Floor(dayTime)
 
 	// Calculate time
-	seconds := dayTime.Sub(day).Mul(dec.New(24*60*60, 0))
-	hour := seconds.Div(dec.New(3600, 0)).Floor()
-	min := seconds.Sub(hour.Mul(dec.New(3600, 0))).
-		Div(dec.New(60, 0)).
-		Floor()
-	sec := seconds.Sub(hour.Mul(dec.New(3600, 0))).
-		Sub(min.Mul(dec.New(60, 0))).
-		Floor()
+	seconds := (dayTime - day) * 24 * 60 * 60
+
+	hours := math.Floor(seconds / 3600)
+	seconds -= hours * 3600
+
+	minutes := math.Floor(seconds / 60)
+	seconds -= minutes * 60
 
 	// Calculate month
-	var month dec.Decimal
-	if e.LessThan(dec.New(14, 0)) {
-		month = e.Sub(dec.New(1, 0))
+	var month float64
+	if e < 14 {
+		month = e - 1
 	} else {
-		month = e.Sub(dec.New(13, 0))
+		month = e - 13
 	}
 
 	// Calculate year
-	var year dec.Decimal
-	if month.GreaterThan(dec.New(2, 0)) {
-		year = c.Sub(dec.New(4716, 0))
+	var year float64
+	if month > 2 {
+		year = c - 4716
 	} else {
-		year = c.Sub(dec.New(4715, 0))
+		year = c - 4715
 	}
 
 	// Create date
-	intYear := int(year.IntPart())
-	intMonth := int(month.IntPart())
-	intDay := int(day.IntPart())
-	intHour := int(hour.IntPart())
-	intMin := int(min.IntPart())
-	intSec := int(sec.IntPart())
-
-	return time.Date(intYear, time.Month(intMonth), intDay,
-		intHour, intMin, intSec, 0, time.UTC)
+	return time.Date(
+		int(year), time.Month(int(month)), int(day),
+		int(hours), int(minutes), int(seconds), 0, time.UTC)
 }
