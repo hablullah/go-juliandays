@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+// FromTime converts Golang std time into Julian Days.
 func FromTime(dt time.Time) (float64, error) {
 	// Convert to UTC
 	dt = dt.UTC()
@@ -52,6 +53,7 @@ func FromTime(dt time.Time) (float64, error) {
 	return julianDay, nil
 }
 
+// ToTime converts Julian Days into Golang std time.
 func ToTime(jd float64) time.Time {
 	// Prepare variables for calculating
 	jd1 := jd + 0.5
