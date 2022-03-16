@@ -6,6 +6,11 @@ import (
 	"time"
 )
 
+var (
+	endOfJulian      = time.Date(1582, 10, 4, 23, 59, 59, 0, time.UTC)
+	startOfGregorian = time.Date(1582, 10, 15, 0, 0, 0, 0, time.UTC)
+)
+
 // FromTime converts Golang std time into Julian Days.
 func FromTime(dt time.Time) (float64, error) {
 	// Convert to UTC
@@ -17,8 +22,6 @@ func FromTime(dt time.Time) (float64, error) {
 	}
 
 	// If date is in blank days, stop
-	endOfJulian := time.Date(1582, 10, 4, 23, 59, 59, 0, time.UTC)
-	startOfGregorian := time.Date(1582, 10, 15, 0, 0, 0, 0, time.UTC)
 	if dt.After(endOfJulian) && dt.Before(startOfGregorian) {
 		return 0, errors.New("date is within blank days")
 	}
