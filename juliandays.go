@@ -7,6 +7,7 @@ import (
 )
 
 var (
+	startOfJulian    = time.Date(-4712, 1, 1, 12, 0, 0, 0, time.UTC)
 	endOfJulian      = time.Date(1582, 10, 4, 23, 59, 59, 0, time.UTC)
 	startOfGregorian = time.Date(1582, 10, 15, 0, 0, 0, 0, time.UTC)
 )
@@ -16,8 +17,8 @@ func FromTime(dt time.Time) (float64, error) {
 	// Convert to UTC
 	dt = dt.UTC()
 
-	// If year is before 4713 B.C, stop
-	if dt.Year() < -4712 {
+	// If dt is before Julian calendar, stop
+	if dt.Before(startOfJulian) {
 		return 0, errors.New("year is before Julian calendar")
 	}
 

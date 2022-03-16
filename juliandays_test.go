@@ -8,49 +8,31 @@ import (
 	"github.com/hablullah/go-juliandays"
 )
 
-var testData []TestData
-
-func init() {
-	var err error
-	testData, err = openTestFile("test-data.csv")
-	if err != nil {
-		panic(err)
-	}
-}
-
 func Test_JD_FromTime(t *testing.T) {
-	if len(testData) == 0 {
-		t.Fatal("no tests available")
-	}
-
-	for _, data := range testData {
-		jd, _ := juliandays.FromTime(data.DateTime)
-		if math.Round((data.JulianDays-jd)*100_000) != 0 {
+	for _, entry := range testEntries {
+		jd, _ := juliandays.FromTime(entry.Time)
+		if math.Round((entry.JD-jd)*100_000) != 0 {
 			t.Errorf("%s: want %f got %f\n",
-				data.DateTime.Format("2006-01-02 15:04:05"),
-				data.JulianDays, jd)
+				entry.Time.Format("2006-01-02 15:04:05"),
+				entry.JD, jd)
 		}
 	}
 }
 
 func Test_JD_ToTime(t *testing.T) {
-	if len(testData) == 0 {
-		t.Fatal("no tests available")
-	}
-
-	for _, data := range testData {
-		if data.JulianDays == 0 {
+	for _, entry := range testEntries {
+		if entry.JD == 0 {
 			continue
 		}
 
-		dt := juliandays.ToTime(data.JulianDays)
-		diff := data.DateTime.Sub(dt).Seconds()
+		dt := juliandays.ToTime(entry.JD)
+		diff := entry.Time.Sub(dt).Seconds()
 		if math.Abs(diff) > 1 {
 			t.Errorf("%f: want %s got %s (%v)\n",
-				data.JulianDays,
-				data.DateTime.Format("2006-01-02 15:04:05"),
+				entry.JD,
+				entry.Time.Format("2006-01-02 15:04:05"),
 				dt.Format("2006-01-02 15:04:05"),
-				data.DateTime.Sub(dt))
+				entry.Time.Sub(dt))
 		}
 	}
 }
